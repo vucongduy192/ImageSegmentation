@@ -1,3 +1,4 @@
 vgg/
-training/
+data_road/
 .idea/
+__pycache__/
