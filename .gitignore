@@ -2,3 +2,5 @@ vgg/
 data_road/
 .idea/
 __pycache__/
+data/
+saved_model/

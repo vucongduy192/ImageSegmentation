@@ -7,23 +7,24 @@ import numpy as np
 
 from glob import glob
 
-class KittiSource:
 
+class KittiSource:
+    # ---------------------------------------------------------------------------
     def __init__(self):
         """
             Declare dataset configuration
             Divide dataset to training && testing, load by batch size
         """
         self.num_classes = 2
-        self.image_size = (576, 160) # (width , height)
-        self.label_colors = { 0: np.array([0, 0, 0]), 1: np.array([255, 0, 255])}
+        self.image_size = (576, 160)  # (width , height)
+        self.label_colors = {0: np.array([0, 0, 0]), 1: np.array([255, 0, 255])}
 
-        self.num_training    = None
-        self.num_validation  = None
+        self.num_training = None
+        self.num_validation = None
         self.train_generator = None
         self.valid_generator = None
 
-    #-------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------
     def load_data(self, data_dir, validation_size=0.2):
         """
         Load all image_paths from data_dir, divide a part to validation set
@@ -46,7 +47,7 @@ class KittiSource:
 
         num_images = len(image_paths)
         valid_images = image_paths[:int(validation_size * num_images)]
-        train_images = image_paths[int(validation_size* num_images):]
+        train_images = image_paths[int(validation_size * num_images):]
 
         self.num_training = len(train_images)
         self.num_validation = len(valid_images)
@@ -62,12 +63,12 @@ class KittiSource:
             road_color = np.array([255, 0, 255])
             random.shuffle(image_paths)
             for offset in range(0, len(image_paths), batch_size):
-                files = image_paths[offset:(offset+batch_size)]
+                files = image_paths[offset:(offset + batch_size)]
 
                 images = []
                 labels = []
                 for image_file in files:
-                    label_file = label_paths[os.path.basename(image_file)] # base name get file name from path
+                    label_file = label_paths[os.path.basename(image_file)]  # base name get file name from path
 
                     image = cv2.resize(cv2.imread(image_file), self.image_size)
                     label = cv2.resize(cv2.imread(label_file), self.image_size)
@@ -81,6 +82,6 @@ class KittiSource:
 
                     images.append(image.astype(np.float32))
                     labels.append(label_all)
-                yield (np.array(images), np.array(labels))
+                yield np.array(images), np.array(labels)
 
         return gen_batch
