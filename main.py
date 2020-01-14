@@ -2,11 +2,12 @@
 from utils import *
 
 import cv2
+from datetime import datetime
 import numpy as np
-from tqdm import tqdm
 import os
 
 import tensorflow as tf
+
 print('Tensorflow version: {}'.format(tf.__version__))
 
 # Killing optional CPU driver warnings
@@ -19,7 +20,7 @@ vgg_path = './vgg'
 
 
 def main():
-    source = init_data_source()
+    source = load_data_source()
     source.load_data(data_dir, validation_size=0.2)
     train_generator = source.train_generator
     valid_generator = source.valid_generator
@@ -31,41 +32,42 @@ def main():
 
     # Declare some placeholder will use when training
     correct_label = tf.placeholder(tf.float32, [None, image_shape[0], image_shape[1], num_classes])
-    learning_rate = tf.placeholder(tf.float32)
+    # learning_rate = tf.placeholder(tf.float32)
     # keep_prob = tf.placeholder(tf.float32)
 
     session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
-    session = tf.Session(config=session_config)
+    with tf.Session(config=session_config) as session:
+        # Load pre-trained VGG model
+        net = load_fcnvgg(session)
+        net.build_from_vgg(vgg_path, correct_label, num_classes)
+        print("Model build successful, starting training")
 
-    # Load pre-trained VGG model
-    model = init_fcnvgg(session)
-    model.build_from_vgg(vgg_path, correct_label, learning_rate, num_classes)
-    print("Model build successful, starting training")
+        # Save checkpoint
+        saver = tf.train.Saver(max_to_keep=10)
+        optimizer, loss = net.get_optimizer(correct_label, num_classes)
 
-    saver = tf.train.Saver(max_to_keep=10)
-    session.run(tf.global_variables_initializer())
-    keep_prob_value = 0.5
-    learning_rate_value = 0.001
+        session.run(tf.global_variables_initializer())
+        session.run(tf.local_variables_initializer())
 
-    for epoch in range(epochs):
-        print("START EPOCH {} ...".format(epoch + 1))
-        # Create function to get batches
-        total_loss = 0
-        generator = train_generator(batch_size)
-        for X_batch, gt_batch in generator:
-            loss, _ = session.run([model.cross_entropy_loss, model.train_op],
-                                  feed_dict={model.image_input: X_batch, correct_label: gt_batch,
-                                             model.keep_prob: keep_prob_value, model.learning_rate: learning_rate_value})
+        for epoch in range(epochs):
+            print("START EPOCH {} ...".format(epoch + 1))
+            # Create function to get batches
+            total_loss = 0
+            generator = train_generator(batch_size)
+            for X_batch, gt_batch in generator:
+                _, loss_batch = session.run([optimizer, loss],
+                                            feed_dict={net.image_input: X_batch, correct_label: gt_batch,
+                                                       net.keep_prob: 0.5})
 
-            total_loss += loss;
+                total_loss += loss_batch
 
-        print("EPOCH {} ...".format(epoch + 1))
-        print("Loss = {:.3f}".format(total_loss))
+            print("EPOCH {} ...".format(epoch + 1))
+            print("Loss = {:.3f}".format(total_loss))
 
-        if (epoch + 1) % 5 == 0:
-            checkpoint = './saved_model/{}/epoch{}.ckpt'.format('13012020UTC', epoch + 1)
-            saver.save(session, checkpoint)
-            print('Checkpoint saved:', checkpoint)
+            if (epoch + 1) % 5 == 0:
+                checkpoint = './saved_model/{}/epoch{}.ckpt'.format(datetime.utcnow().strftime("%Y%m%d"), epoch + 1)
+                saver.save(session, checkpoint)
+                print('Checkpoint saved:', checkpoint)
 
 
 if __name__ == '__main__':
