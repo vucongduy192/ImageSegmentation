@@ -7,7 +7,6 @@ import numpy as np
 import os
 
 import tensorflow as tf
-
 print('Tensorflow version: {}'.format(tf.__version__))
 
 # Killing optional CPU driver warnings
@@ -25,10 +24,11 @@ def main():
     train_generator = source.train_generator
     valid_generator = source.valid_generator
 
-    epochs = 10
+    epochs = 40
     batch_size = 4
     num_classes = 2
     image_shape = (160, 576)  # height, width
+    image_size = (576, 160)  # height, width
 
     # Declare some placeholder will use when training
     correct_label = tf.placeholder(tf.float32, [None, image_shape[0], image_shape[1], num_classes])
@@ -40,7 +40,7 @@ def main():
         # Load pre-trained VGG model
         net = load_fcnvgg(session)
         net.build_from_vgg(vgg_path, correct_label, num_classes)
-        print("Model build successful, starting training")
+        print("Model build successful, starting train")
 
         # Save checkpoint
         saver = tf.train.Saver(max_to_keep=10)
@@ -65,7 +65,7 @@ def main():
             print("Loss = {:.3f}".format(total_loss))
 
             if (epoch + 1) % 5 == 0:
-                checkpoint = './saved_model/{}/epoch{}.ckpt'.format(datetime.utcnow().strftime("%Y%m%d"), epoch + 1)
+                checkpoint = './saved_model/{}UTC/epoch{}.ckpt'.format(datetime.utcnow().strftime("%Y%m%d"), epoch + 1)
                 saver.save(session, checkpoint)
                 print('Checkpoint saved:', checkpoint)
 

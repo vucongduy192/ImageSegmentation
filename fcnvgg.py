@@ -6,9 +6,21 @@ class FCNVGG:
     def __init__(self, session):
         self.session = session
 
+    def build_from_metagraph(self, metagraph_file, checkpoint_file):
+        self.__load_fcnvgg(metagraph_file, checkpoint_file)
+
     def build_from_vgg(self, vgg_path, correct_label, num_classes):
         self.__load_vgg(vgg_path)
         self.__make_result_tensors(correct_label, num_classes)
+
+    def __load_fcnvgg(self, metagraph_file, checkpoint_file):
+        self.session.run(tf.global_variables_initializer())
+        saver = tf.train.import_meta_graph(metagraph_file)
+        saver.restore(self.session, checkpoint_file)
+
+        self.image_input = self.session.graph.get_tensor_by_name('image_input:0')
+        self.keep_prob = self.session.graph.get_tensor_by_name('keep_prob:0')
+        self.logits = self.session.graph.get_tensor_by_name('fcn_logits:0')
 
     def __load_vgg(self, vgg_path):
         model = tf.saved_model.loader.load(self.session, ['vgg16'], vgg_path)
@@ -27,21 +39,22 @@ class FCNVGG:
         # Apply 1x1 convolution in place of fully connected layer
         fcn8 = tf.layers.conv2d(layer7, filters=num_classes, kernel_size=1, name="fcn8")
 
-        # Upsample fcn8 with size depth=(4096?) to match size of layer 4 so that we can add skip connection with 4th layer
+        # Up-sample fcn8 with size depth=(4096?) to match size of layer 4
+        # so that we can add skip connection with 4th layer
         fcn9 = tf.layers.conv2d_transpose(fcn8, filters=layer4.get_shape().as_list()[-1],
                                           kernel_size=4, strides=(2, 2), padding='SAME', name="fcn9")
 
         # Add a skip connection between current final layer fcn8 and 4th layer
         fcn9_skip_connected = tf.add(fcn9, layer4, name="fcn9_plus_vgg_layer4")
 
-        # Upsample again
+        # Up-sample again
         fcn10 = tf.layers.conv2d_transpose(fcn9_skip_connected, filters=layer3.get_shape().as_list()[-1],
                                            kernel_size=4, strides=(2, 2), padding='SAME', name="fcn10_conv2d")
 
         # Add skip connection
         fcn10_skip_connected = tf.add(fcn10, layer3, name="fcn10_plus_vgg_layer3")
 
-        # Upsample again
+        # Up-sample again
         fcn11 = tf.layers.conv2d_transpose(fcn10_skip_connected, filters=num_classes,
                                            kernel_size=16, strides=(8, 8), padding='SAME', name="fcn11")
 
