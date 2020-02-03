@@ -56,6 +56,8 @@ def main():
 
     session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
     with tf.Session(config=session_config) as session:
+        session.run(tf.global_variables_initializer())
+
         net = load_fcnvgg(session)
         net.build_from_metagraph(metagraph_file, checkpoint_file)
         print("Model load successful, starting test")
@@ -70,11 +72,17 @@ def main():
 
             image_reshaped = image_softmax.eval().reshape(batch_size, image_size[1], image_size[0], 2)
             for idx in range(image_reshaped.shape[0]):
+                image_src = X_batch[idx]
                 image_labelled = np.argmax(image_reshaped[idx], axis=2)
                 image_save = np.zeros((image_size[1], image_size[0], 3))
+
                 for val, color in label_colors.items():
                     label_mask = image_labelled == val
-                    image_save[label_mask] = color
+                    if val == 0:  # background pixel
+                        image_save[label_mask] = image_src[label_mask]
+                    else:
+                        image_save[label_mask] = color
+
                 cv2.imwrite(output_dir + '/' + names[idx], image_save)
             break
 

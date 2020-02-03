@@ -6,5 +6,5 @@ def load_data_source():
     return KittiSource()
 
 
-def load_fcnvgg(session):
-    return FCNVGG(session)
+def load_fcnvgg(session, num_classes):
+    return FCNVGG(session, num_classes)
