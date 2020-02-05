@@ -21,15 +21,15 @@ log_dir = './tensorboard'
 
 
 def main():
-    source = load_data_source()
-    source.load_data(data_dir, validation_size=0.2)
+    source = load_voc_source()
+    source.load_data(validation_size=0.2)
     train_generator = source.train_generator
     valid_generator = source.valid_generator
 
-    epochs = 40
+    epochs = 10
     batch_size = 4
-    num_classes = 2
-    image_shape = (160, 576)  # height, width
+    num_classes = 21
+    image_shape = (224, 224)  # height, width
 
     # Declare some placeholder will use when training
     correct_label = tf.placeholder(tf.float32, [None, image_shape[0], image_shape[1], num_classes])
