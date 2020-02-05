@@ -3,3 +3,6 @@ data_road/
 .idea/
 __pycache__/
 data/
+VOC2012/
+tensorboard/
+saved_model/
