@@ -1,8 +1,8 @@
 import random
 import cv2
 import os
-from skimage.io import imshow
-import matplotlib.pyplot as plt
+# from skimage.io import imshow
+# import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -37,26 +37,23 @@ def color_map_dict():
 
 
 class VOCSource(object):
-    def __init__(self, training=True):
-        if training is True:
-            self.num_training = None
-            self.num_validation = None
-            self.train_generator = None
-            self.valid_generator = None
-        else:
-            self.test_validation = None
-            self.test_generator = None
+    def __init__(self):
+        self.num_training = None
+        self.num_validation = None
+        self.train_generator = None
+        self.valid_generator = None
+
+        self.num_testing = None
+        self.test_generator = None
 
         self.label_colors = color_map_dict()
-        # print(self.label_colors)
         self.num_classes = len(self.label_colors)
-        # print(self.num_classes)
         self.image_size = (224, 224)
 
-    def load_data(self, validation_size=0.2):
-        images_dir = './VOC2012/JPEGImages/'  # very large
-        labels_dir = './VOC2012/SegmentationClass/'  # 2913
-        images_txt = './VOC2012/ImageSets/Segmentation/train.txt'  # 1464 images name
+    # -------------------------------------------------------------------------------
+    def load_data(self, data_dir, images_txt, validation_size=None):
+        images_dir = os.path.join(data_dir, './JPEGImages/')   # very large
+        labels_dir = os.path.join(data_dir, './SegmentationClass/')  # 2913
 
         # train.txt: 1464 , val.txt: 1449 , Segmentation: 2913
         with open(images_txt, 'r') as f:
@@ -68,19 +65,23 @@ class VOCSource(object):
                 label_paths[os.path.basename(image_path)] = labels_dir + image[:-1] + '.png'
 
         random.shuffle(image_paths)
-        num_images = len(image_paths)
-        valid_images = image_paths[:int(validation_size * num_images)]
-        train_images = image_paths[int(validation_size * num_images):]
-        # print(len(train_images))
-        # print(len(valid_images))
+        if validation_size is None:
+            test_images = image_paths
+            self.num_testing = len(test_images)
+            self.test_generator = self.batch_generator(test_images, label_paths)
+        else:
+            num_images = len(image_paths)
+            valid_images = image_paths[:int(validation_size * num_images)]
+            train_images = image_paths[int(validation_size * num_images):]
 
-        self.num_training = len(train_images)
-        self.num_validation = len(valid_images)
-        self.train_generator = self.batch_generator(train_images, label_paths)
-        self.valid_generator = self.batch_generator(valid_images, label_paths)
+            self.num_training = len(train_images)
+            self.num_validation = len(valid_images)
+            self.train_generator = self.batch_generator(train_images, label_paths)
+            self.valid_generator = self.batch_generator(valid_images, label_paths)
 
+    # -------------------------------------------------------------------------------
     def batch_generator(self, image_paths, label_paths):
-        def gen_batch(batch_size):
+        def gen_batch(batch_size=8):
             """
             :param batch_size:
             :return: generator of a batch contain (images, labels)
@@ -91,9 +92,9 @@ class VOCSource(object):
 
                 images = []
                 labels = []
+                names = []
                 for image_file in files:
                     label_file = label_paths[os.path.basename(image_file)]  # base name get file name from path
-
                     image = cv2.cvtColor(cv2.resize(cv2.imread(image_file), self.image_size), cv2.COLOR_BGR2RGB)
                     label = cv2.cvtColor(cv2.resize(cv2.imread(label_file), self.image_size), cv2.COLOR_BGR2RGB)
 
@@ -109,11 +110,10 @@ class VOCSource(object):
 
                     images.append(image.astype(np.float32))
                     labels.append(label_all)
-                    break
-                yield np.array(images), np.array(labels)
+                    names.append(os.path.basename(image_file))
+                yield np.array(images), np.array(labels), np.array(names)
 
         return gen_batch
-
 
 # if __name__ == '__main__':
 #     source = VOCSource(training=False)

@@ -6,3 +6,4 @@ data/
 VOC2012/
 tensorboard/
 saved_model/
+venv/

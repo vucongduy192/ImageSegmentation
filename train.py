@@ -15,14 +15,15 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 # Specify all directory paths
-data_dir = './data_road'
+data_dir = './VOC2012'
 vgg_dir = './vgg'
 log_dir = './tensorboard'
+train_txt = os.path.join(data_dir, 'ImageSets/Segmentation/train.txt')  # 1464 images name
 
 
 def main():
     source = load_voc_source()
-    source.load_data(validation_size=0.2)
+    source.load_data(data_dir, train_txt, validation_size=0.2)
     train_generator = source.train_generator
     valid_generator = source.valid_generator
 
@@ -63,7 +64,7 @@ def main():
             # Training process
             training_loss_total = 0
             generator = train_generator(batch_size)
-            for X_batch, gt_batch in generator:
+            for X_batch, gt_batch, _ in generator:
                 _, loss = session.run([optimizer_op, loss_op],
                                       feed_dict={net.image_input: X_batch, correct_label: gt_batch,
                                                  net.keep_prob: 0.5})
@@ -75,7 +76,7 @@ def main():
             # Validation process
             valid_loss_total = 0
             generator = valid_generator(batch_size)
-            for X_batch, gt_batch in generator:
+            for X_batch, gt_batch, _ in generator:
                 _, loss = session.run([optimizer_op, loss_op],
                                       feed_dict={net.image_input: X_batch, correct_label: gt_batch,
                                                  net.keep_prob: 1.})
