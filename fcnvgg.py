@@ -22,6 +22,9 @@ class FCNVGG:
         self.keep_prob = self.session.graph.get_tensor_by_name('keep_prob:0')
         self.logits = self.session.graph.get_tensor_by_name('sum/fcn_logits:0')
 
+        self.softmax = self.session.graph.get_tensor_by_name('result/Softmax:0')
+        self.classes = self.session.graph.get_tensor_by_name('result/ArgMax:0')
+
     def __load_vgg(self, vgg_path):
         model = tf.saved_model.loader.load(self.session, ['vgg16'], vgg_path)
         graph = tf.get_default_graph()
@@ -72,9 +75,10 @@ class FCNVGG:
             self.logits = tf.reshape(fcn11, (-1, self.num_classes), name="fcn_logits")
 
         with tf.name_scope('result'):
-            self.softmax = tf.nn.softmax(self.logits, name='fcn_softmax')
+            self.softmax = tf.nn.softmax(self.logits)
+            self.classes = tf.argmax(self.softmax, axis=3)
 
-    def get_optimizer(self, correct_label, learning_rate=0.001):
+    def get_optimizer(self, correct_label, learning_rate=0.0001):
         # Reshape 4D tensors to 2D, each row represents a pixel, each column a class
         correct_label_reshaped = tf.reshape(correct_label, (-1, self.num_classes))
 
