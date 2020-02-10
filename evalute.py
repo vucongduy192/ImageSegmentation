@@ -20,10 +20,19 @@ data_dir = './VOC2012'
 vgg_dir = './vgg'
 log_dir = './tensorboard'
 output_dir = './output'
-model_dir = './saved_model/20200206-042657/'
+model_dir = './saved_model/20200208-165121/'
 test_txt = os.path.join(data_dir, 'ImageSets/Segmentation/val.txt')  # 1464 images name
 
 batch_size = 8
+
+
+def draw_labels(img, label, label_colors):
+    img_save = np.zeros_like(img)
+    for val, color_rgb in label_colors.items(): # diningtable => rgb(124, 124, 0)
+        label_mask = label == list(label_colors.keys()).index(val)
+        img_save[label_mask] = color_rgb
+    return img_save
+
 
 if __name__ == '__main__':
     source = load_voc_source()
@@ -37,7 +46,9 @@ if __name__ == '__main__':
         print('[!] No network state found in ' + model_dir)
         sys.exit(1)
 
-    checkpoint_file = './saved_model/20200206-042657/epoch10.ckpt'
+    checkpoint_file = state.all_model_checkpoint_paths[-1]
+    checkpoint_file = checkpoint_file.replace('/content/drive/My Drive/dataset/FCN/', './')
+    print(checkpoint_file)
     metagraph_file = checkpoint_file + '.meta'
     session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
     with tf.Session(config=session_config) as session:
@@ -50,23 +61,12 @@ if __name__ == '__main__':
         generator = test_generator(batch_size)
         for X_batch, gt_batch, names_batch in generator:
             feed = {net.image_input: X_batch, net.keep_prob: 1}
-            image = session.run(net.logits, feed_dict=feed)
+            y_batch = session.run(net.classes, feed_dict=feed)
+            y_batch = y_batch.reshape(batch_size, source.image_size[1], source.image_size[0])
 
-            image_softmax = tf.nn.softmax(image)
-            session.run(image_softmax)
-            predict = image_softmax.eval()
-            image_reshaped = image_softmax.eval().reshape(batch_size, source.image_size[1], source.image_size[0], 2)
-            for idx in range(image_reshaped.shape[0]):
-                image_src = X_batch[idx]
-                image_labelled = np.argmax(image_reshaped[idx], axis=2)
-                image_save = np.zeros((source.image_size[1], source.image_size[0], 3))
-
-                for val, color in source.label_colors.items():
-                    label_mask = image_labelled == val
-                    if val == 0:  # background pixel
-                        image_save[label_mask] = image_src[label_mask]
-                    else:
-                        image_save[label_mask] = color
-
-                cv2.imwrite(output_dir + '/' + names_batch[idx], image_save)
+            for idx in range(X_batch.shape[0]):
+                img_label = draw_labels(X_batch[idx], y_batch[idx], source.label_colors)
+                cv2.imwrite(output_dir + '/' + names_batch[idx], img_label)
+                cv2.imwrite(output_dir + '/source_' + names_batch[idx], X_batch[idx])
+                break
             break
