@@ -58,6 +58,16 @@ def colors2labels(img, cmap):
 
     return labels
 
+def padding_labels(img, target_shape, cval=0): # number of classes 
+    h_pad, w_pad = np.asarray(target_shape) - img.shape[:2]
+    assert h_pad >= 0, 'Height padding must be non-negative'
+    assert w_pad >= 0, 'Width padding must be non-negative'
+
+    padding = ((h_pad//2, h_pad-h_pad//2), (w_pad//2, w_pad-w_pad//2))
+    if len(img.shape) == 3:
+        padding += ((0, 0),)
+    img_padded = np.pad(img, padding, mode='constant', constant_values=cval)
+    return img_padded
 
 class VOCDataset():
     """Dataset class for PASCAL VOC 2012."""
@@ -159,6 +169,11 @@ class VOCDataset():
                         }))
                 writer.write(example.SerializeToString())
 
+    def padding_record(self, img, gt):
+        img_padded = padding_labels(img, self.image_shape)
+        gt_padded = padding_labels(gt, self.image_shape, cval=self.n_classes)
+        return img_padded, gt_padded
+
     def parse_record(self, record_serialized):
         """
         Parses a sample proto containing a training or validation example of an image. The output of the
@@ -201,6 +216,9 @@ class VOCDataset():
         dataset = tf.data.TFRecordDataset(data_path)
         dataset = dataset.prefetch(buffer_size=batch_size)
         dataset = dataset.map(self.parse_record)
+        dataset = dataset.map(lambda im, gt, _: tuple(tf.compat.v1.py_func(self.padding_record,
+                                                                     [im, gt],
+                                                                     [im.dtype, tf.uint8])))
 
         return dataset.batch(batch_size)
 
@@ -213,10 +231,10 @@ if __name__ == '__main__':
     # # Load list basenames of images
     # train_basenames = dataset.get_basenames('val', dataset_path)
     # print('Found', len(train_basenames), 'val samples')
-    #
+    
     # # Load image from dataset directory and sparse encoding
-    # # dataset.export_sparse_encoding('val', dataset_path)
-    #
+    # dataset.export_sparse_encoding('val', dataset_path)
+    
     # # Export sparse encoding ground truth to TFRecords
     # dataset.export_tfrecord('val', dataset_path, 'segmentation_val.tfrecords')
     # print('Finished exporting')
@@ -239,6 +257,7 @@ if __name__ == '__main__':
         while True:
             try:
                 im_batch, gt_batch = session.run(next_batch)
+                print(im_batch.shape)
             except tf.errors.OutOfRangeError:
                 break
             break

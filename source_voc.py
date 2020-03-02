@@ -32,8 +32,8 @@ def color_map_dict():
     labels = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair',
               'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa',
               'train', 'tvmonitor', 'void']
-    # print(len(labels))
-    return dict(zip(labels[:-1], color_map()[:-1]))
+
+    return dict(zip(labels, color_map()))
 
 
 class VOCSource(object):

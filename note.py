@@ -33,3 +33,8 @@ FUNCTION USE YIELD && RETURN
     Yield return a generator, can call each value step by step
     Return return a list of all values
 """
+
+"""
+Version2 re-implement VOCDataset by Tensorflow's TFRecords
+Use TFRecords to batch dataset, the most important is padding all image to the same size
+"""
