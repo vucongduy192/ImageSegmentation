@@ -5,12 +5,6 @@ import random
 
 import tensorflow as tf
 
-print('Tensorflow version: {}'.format(tf.__version__))
-
-# Killing optional CPU driver warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-tf.logging.set_verbosity(tf.logging.ERROR)
-
 
 def color_map_value(n_classes=256, normalized=False):
     """
@@ -69,10 +63,11 @@ def padding_labels(img, target_shape, cval=0): # number of classes
     img_padded = np.pad(img, padding, mode='constant', constant_values=cval)
     return img_padded
 
+
 class VOCDataset():
     """Dataset class for PASCAL VOC 2012."""
 
-    def __init__(self, augmentation_params):
+    def __init__(self, augmentation_params=None):
         self.augmentation_params = augmentation_params
         self.image_shape = (512, 512)  # Image is padded to obtain a shape divisible by 32.
         self.n_classes = 21  # Excluding the ignore/void class
@@ -210,8 +205,8 @@ class VOCDataset():
 
     def load_dataset(self, dataset_path, batch_size, is_training=False):
         """Returns a TFRecordDataset for the requested dataset."""
-        data_path = os.path.join(dataset_path, 'TFRecords',
-                                 'segmentation_{}.tfrecords'.format('train' if is_training else 'val'))
+        tf_record = 'segmentation_{}.tfrecords'.format('train' if is_training else 'val')
+        data_path = os.path.join(dataset_path, 'TFRecords', tf_record)
 
         dataset = tf.data.TFRecordDataset(data_path)
         dataset = dataset.prefetch(buffer_size=batch_size)
@@ -222,42 +217,18 @@ class VOCDataset():
 
         return dataset.batch(batch_size)
 
-
-if __name__ == '__main__':
-    root_path = '../../'
-    dataset_path = os.path.join(root_path, 'VOC2012/')
-    dataset = VOCDataset(augmentation_params=None)
-
-    # # Load list basenames of images
-    # train_basenames = dataset.get_basenames('val', dataset_path)
-    # print('Found', len(train_basenames), 'val samples')
-    
-    # # Load image from dataset directory and sparse encoding
-    # dataset.export_sparse_encoding('val', dataset_path)
-    
-    # # Export sparse encoding ground truth to TFRecords
-    # dataset.export_tfrecord('val', dataset_path, 'segmentation_val.tfrecords')
-    # print('Finished exporting')
-
-    # Reload saved TFRecords
-
-    dataset_val = dataset.load_dataset(dataset_path, batch_size=8, is_training=False)
-
-    iterator = tf.data.Iterator.from_structure(dataset_val.output_types,
-                                               dataset_val.output_shapes)
-
-    next_batch = iterator.get_next()
-    val_init_op = iterator.make_initializer(dataset_val)
-
-    session_config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
-    with tf.Session(config=session_config) as session:
-        session.run(tf.global_variables_initializer())
-        session.run(val_init_op)
-
-        while True:
-            try:
-                im_batch, gt_batch = session.run(next_batch)
-                print(im_batch.shape)
-            except tf.errors.OutOfRangeError:
-                break
-            break
+# if __name__ == '__main__':
+#     root_path = './'
+#     dataset_path = os.path.join(root_path, 'VOC2012/')
+#     dataset = VOCDataset(augmentation_params=None)
+#
+#     # Load list basenames of images
+#     train_basenames = dataset.get_basenames('train', dataset_path)
+#     print('Found', len(train_basenames), 'train samples')
+#
+#     # Load image from dataset directory and sparse encoding
+#     dataset.export_sparse_encoding('train', dataset_path)
+#
+#     # Export sparse encoding ground truth to TFRecords
+#     dataset.export_tfrecord('train', dataset_path, 'segmentation_train.tfrecords')
+#     print('Finished exporting')
