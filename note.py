@@ -38,3 +38,8 @@ FUNCTION USE YIELD && RETURN
 Version2 re-implement VOCDataset by Tensorflow's TFRecords
 Use TFRecords to batch dataset, the most important is padding all image to the same size
 """
+
+"""
+self.image_shape = (512, 512) => *self.image_shape = 512 512
+[*self.image_shape, 3] = [512, 512, 3]
+"""
